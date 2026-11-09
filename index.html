@@ -105,6 +105,25 @@ img{max-width:100%;display:block}
 .empty b{display:block;color:var(--ink);font-weight:500;font-size:15px;margin-bottom:4px}
 .note{margin-top:12px;font-size:12px;border-radius:14px;padding:10px 12px;background:#fff6e6;color:#8a5a00}
 
+/* view tabs + plan */
+.seg{display:flex;gap:4px;margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px}
+.seg button{flex:1;height:36px;border-radius:999px;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--pink);color:#fff;font-weight:500}
+.plan{margin-top:14px;display:grid;gap:10px}
+.planhd{border-radius:20px;padding:16px 18px;background:var(--grad);color:#fff;display:grid;gap:2px}
+.planhd b{font-family:var(--display);font-weight:500;font-size:18px}.planhd span{font-size:12px;opacity:.92}
+.stop{display:grid;grid-template-columns:30px 1fr;gap:12px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
+.stop.now{border-color:var(--pink);box-shadow:0 0 0 2px #f9cfe0}
+.stop .num{width:28px;height:28px;border-radius:50%;background:var(--pink);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:600}
+.stop .st1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.stop .st1 b{font-size:15px}
+.stop em{font-style:normal;font-size:11px;background:var(--pink);color:#fff;border-radius:999px;padding:1px 8px}
+.stop .tm{font-size:12px;color:var(--pink);font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+.stop p{margin:6px 0 0;font-size:13px;color:var(--ink)}
+.maplink{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:underline}
+.leg{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:4px 6px 4px 8px;margin-left:10px;border-left:2px dashed #f2b6d0}
+.leg .lic{font-size:18px;text-align:center}.leg .lt b{font-size:13px;font-weight:500}.leg .lt p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.gbtn{background:#1a73e8;color:#fff;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap}
+.pnote{font-size:11px;color:var(--muted);margin:4px 4px 0}
 /* bottom bar */
 .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(env(safe-area-inset-bottom) + 14px);background:linear-gradient(transparent,var(--bg) 35%);display:flex;justify-content:center;gap:10px;z-index:5}
 .bar .in{display:flex;gap:10px;width:100%;max-width:488px}
@@ -218,7 +237,7 @@ function upsertLocal(p){const i=S.products.findIndex(x=>x.id===p.id);if(i>=0)S.p
 
 /* ---------- auth / start ---------- */
 async function boot(){
-  S.member=ls("hkb_member");
+  S.member=ls("hkb_member");S.view=ls("hkb_view")||"log";
   render();
   const {data}=await sb.auth.getSession();
   if(!data.session)return showLogin();
@@ -284,7 +303,53 @@ function filtered(){
     return true;
   }).sort((a,b)=>b.createdAt-a.createdAt);
 }
+function headerHTML(){
+  const monthLbl=new Date().toLocaleDateString("en-US",{month:"long",year:"numeric"});
+  return `<div class="top"><div><h1>${esc(monthLbl)}</h1><small>홍콩 뷰티 시장조사 · ${esc(S.member||"팀 공유")}</small></div>
+    <button class="iconbtn" id="btnExport" aria-label="엑셀 내보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 17v3h14v-3"/></svg></button></div>
+    <div class="seg" role="tablist"><button role="tab" class="${S.view==="plan"?"":"on"}" data-view="log">제품 기록</button><button role="tab" class="${S.view==="plan"?"on":""}" data-view="plan">목 11/12 일정</button></div>`;
+}
+
+/* ---------- Thursday field-trip plan ---------- */
+const PLAN={date:"2026-11-12",stops:[
+  {t:"09:00",e:"09:00",name:"마르코 폴로 홍콩 호텔",tag:"출발",q:"Marco Polo Hongkong Hotel, Harbour City, Tsim Sha Tsui",note:"09:00 호텔 출발 후 센트럴로 이동."},
+  {t:"10:30",e:"11:10",name:"레인 크로포드 IFC",tag:"백화점",q:"Lane Crawford IFC Mall, Central, Hong Kong",note:"Podium 3, IFC Mall. 2026년 11월 리뉴얼 예정·완료 여부 확인. 100+ 뷰티 브랜드, 신규 고기능 스킨·바디·헤어 및 디바이스 조사.",
+    leg:{mode:"transit",icon:"⛴️",label:"스타페리 + 도보",min:"약 25분",how:"호텔 옆 스타페리 침사추이 선착장 → 센트럴 선착장(배 약 10분) → IFC몰까지 도보 약 8분. 09:00 출발이면 개점(10:30) 전에 넉넉히 도착."}},
+  {t:"11:45",e:"12:25",name:"BEAUTY AVENUE",tag:"미용",q:"BEAUTY AVENUE, Bank Centre Mall, 636 Nathan Road, Mong Kok",note:"G/F–L1, Bank Centre Mall. 70+ 브랜드, 스킨·퍼스널케어 대규모 진열 조사. 색조는 제외.",
+    leg:{mode:"transit",icon:"🚇",label:"MTR 췬완선",min:"약 25분",how:"IFC에서 센트럴(Central)역 → 췬완선(Tsuen Wan Line, 빨간색) 몽콕(Mong Kok)역 하차(약 12분) → 네이선 로드 따라 도보 약 5분. 택시는 해저터널 경유 약 20분."}},
+  {t:"12:35",e:"13:15",name:"Langham Beauty",tag:"화장품 판매점",q:"Langham Beauty, Langham Place, Mong Kok",note:"L1–L2. 60+ 뷰티 브랜드, 더마 스킨·헤어·바디·디바이스 중심으로 조사.",
+    leg:{mode:"walking",icon:"🚶",label:"도보",min:"약 3분",how:"네이선 로드에서 랭함 플레이스 쇼핑몰 방향으로 약 270m."}},
+  {t:"13:20",e:"14:00",name:"J SELECT Beauty",tag:"미용용품점",q:"J SELECT Beauty, Langham Place, Mong Kok",note:"Langham Beauty 내 D10, Level 2. 2026년 4월 개점 매장. 뷰티 디바이스 및 프리미엄 스킨케어 조사.",
+    leg:{mode:"walking",icon:"🚶",label:"도보",min:"1분 이내",how:"Langham Beauty 안 Level 2, D10 구역."}},
+  {t:"14:50",e:"15:30",name:"@cosme HONG KONG",tag:"화장품 판매점",q:"@cosme STORE, Yue Hwa International Building, Tsim Sha Tsui",note:"Yue Hwa International Building, 7 Ashley Road. 2025년 12월 개점 플래그십. 500+ 브랜드, 1F 랭킹 및 2F 시트 마스크 월 조사.",
+    leg:{mode:"transit",icon:"🚇",label:"MTR 췬완선",min:"약 20분",how:"몽콕(Mong Kok)역 → 췬완선 침사추이(Tsim Sha Tsui)역 하차(약 6분) → 애슐리 로드까지 도보 약 5~8분. 택시는 약 10~15분."}},
+  {t:"15:45",e:"16:25",name:"SEPHORA K11 MUSEA",tag:"화장품 판매점",q:"Sephora K11 MUSEA, Tsim Sha Tsui",note:"K11 MUSEA B2. 글로벌 스킨·헤어·바디 제품 비교.",
+    leg:{mode:"walking",icon:"🚶",label:"도보",min:"약 8~10분",how:"애슐리 로드에서 솔즈베리 로드(바닷가) 방향으로 약 600m. K11 MUSEA 지하 2층."}},
+  {t:"16:40",e:"17:20",name:"JOYCE Beauty Harbour City",tag:"건강·미용용품점",q:"JOYCE Beauty, Gateway Arcade, Harbour City, Tsim Sha Tsui",note:"Gateway Arcade L3, 매장 3310. 니치 스킨·헤어·뷰티 디바이스 조사.",
+    leg:{mode:"walking",icon:"🚶",label:"도보",min:"약 8~10분",how:"솔즈베리 로드 → 캔턴 로드, 하버시티 게이트웨이 아케이드 L3까지 약 700m."}},
+  {t:"17:20",e:"17:40",name:"마르코 폴로 홍콩 호텔",tag:"복귀",q:"Marco Polo Hongkong Hotel, Harbour City, Tsim Sha Tsui",note:"호텔 복귀 및 일정 종료.",
+    leg:{mode:"walking",icon:"🚶",label:"도보",min:"1분 이내",how:"같은 하버시티 단지 안."}}
+]};
+function gmapsDir(from,to,mode){return"https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(from)+"&destination="+encodeURIComponent(to)+"&travelmode="+mode}
+function gmapsPlace(q){return"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q)}
+function planHTML(){
+  const now=new Date();const today=dayKey(now.getTime());const hm=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
+  let cur=-1;if(today===PLAN.date){cur=PLAN.stops.findIndex(s=>hm<=s.e);}
+  let h=`<div class="plan"><div class="planhd"><b>목요일 오프라인 시장조사</b><span>2026.11.12 · 9곳 · 09:00–17:40</span></div>`;
+  PLAN.stops.forEach((s,i)=>{
+    if(s.leg){const prev=PLAN.stops[i-1];
+      h+=`<div class="leg"><span class="lic">${s.leg.icon}</span><div class="lt"><b>${esc(s.leg.label)} · ${esc(s.leg.min)}</b><p>${esc(s.leg.how)}</p></div>
+        <a class="gbtn" href="${gmapsDir(prev.q,s.q,s.leg.mode)}" target="_blank" rel="noopener">길찾기</a></div>`}
+    h+=`<div class="stop${i===cur?" now":""}"><div class="num">${i+1}</div><div class="sb"><div class="st1"><b>${esc(s.name)}</b>${i===cur?`<em>지금</em>`:""}</div>
+      <div class="tm">${s.t===s.e?s.t:s.t+" – "+s.e} · ${esc(s.tag)}</div><p>${esc(s.note)}</p>
+      <a class="maplink" href="${gmapsPlace(s.q)}" target="_blank" rel="noopener">지도에서 보기</a></div></div>`;
+  });
+  h+=`<p class="pnote">이동 시간은 평일 낮 기준 예상치입니다. 길찾기를 누르면 구글맵이 앞 장소에서 이 장소까지의 실시간 경로를 보여 줍니다.</p></div>`;
+  return h;
+}
+
 function render(){
+  if(S.view==="plan"){$("#app").innerHTML=headerHTML()+planHTML();return}
   const P=S.products;
   const today=dayKey(Date.now());
   const days=[...new Set(P.map(p=>dayKey(p.createdAt)).concat([today]))].sort();
@@ -296,8 +361,7 @@ function render(){
   const groups=[];list.forEach(p=>{const k=dayKey(p.createdAt);let g=groups.find(g=>g.k===k);if(!g)groups.push(g={k,items:[]});g.items.push(p)});
   const monthLbl=new Date().toLocaleDateString("en-US",{month:"long",year:"numeric"});
 
-  let h=`<div class="top"><div><h1>${esc(monthLbl)}</h1><small>홍콩 뷰티 시장조사 · ${esc(S.member||"팀 공유")}</small></div>
-    <button class="iconbtn" id="btnExport" aria-label="엑셀 내보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 17v3h14v-3"/></svg></button></div>`;
+  let h=headerHTML();
   h+=`<div class="days" aria-label="날짜별 보기"><button class="day all ${S.day?"":"on"}" data-day=""><b>전체</b><span>${P.length}</span></button>`;
   days.forEach(k=>{const d=new Date(k+"T00:00");h+=`<button class="day ${S.day===k?"on":""}" data-day="${k}"><b>${d.getDate()}</b><span>${DOW[d.getDay()]}</span><i class="${counts[k]?"":"none"}"></i></button>`});
   h+=`</div>`;
@@ -335,6 +399,7 @@ function render(){
 /* ---------- events ---------- */
 document.addEventListener("click",e=>{
   const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.view){S.view=t.dataset.view;ls("hkb_view",S.view);render();window.scrollTo(0,0);return}
   if(t.dataset.day!==undefined){S.day=t.dataset.day||null;render();return}
   if(t.dataset.mine!==undefined){S.mine=t.dataset.mine==="1";render();return}
   if(t.dataset.cat!==undefined){S.cat=t.dataset.cat;render();return}
@@ -385,11 +450,12 @@ async function photoSrc(ph){
 }
 
 /* ---------- AI ---------- */
-async function analyze(dataUrl){
+async function analyze(dataUrl,retry){
   try{
     const {data,error}=await sb.functions.invoke("hk-analyze",{body:{image:dataUrl}});
     if(error){
       let code="";try{const j=await error.context.json();code=j.error}catch(e){}
+      if(code==="rate_limited"&&!retry){await new Promise(r=>setTimeout(r,1500));return analyze(dataUrl,true)}
       if(code==="rate_limited")return{error:"AI 요청이 몰렸습니다. 잠시 후 다시 분석하거나 직접 입력해 주세요."};
       if(code==="no_key")return{error:"AI 키가 아직 설정되지 않았습니다. 직접 입력해 주세요."};
       return{error:"AI가 제품을 읽지 못했습니다. 직접 입력해 주세요."};
