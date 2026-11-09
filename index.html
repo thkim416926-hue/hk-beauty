@@ -418,7 +418,7 @@ function render(){
           :p.purchased?esc(p.reason||"구매함"):"분석만 · 미구매";
         const l3=idea?esc([p.brand,p.store].filter(Boolean).join(" · ")||"장소 미입력")
           :esc([p.purchased?p.store:"",p.brand,p.country].filter(Boolean).join(" · ")||"브랜드 미입력");
-        const badge=wait?`<span class="badge wait">AI 분석 중</span>`:idea?`<span class="badge idea">박람회</span>`:p.purchased?`<span class="badge">구매</span>`:"";
+        const badge=wait?`<span class="badge wait">AI 분석 중</span>`:p.aiStatus==="failed"?`<span class="badge wait">AI 대기</span>`:idea?`<span class="badge idea">박람회</span>`:p.purchased?`<span class="badge">구매</span>`:"";
         h+=`<div class="sw"><button class="swdel" data-del="${esc(p.id)}">삭제</button><button class="item" data-open="${esc(p.id)}">
           ${p.thumb?`<img class="th" src="${esc(p.thumb)}" alt="">`:`<div class="th"></div>`}
           <div style="min-width:0"><div class="nm">${esc(title)}</div>
@@ -499,12 +499,12 @@ async function analyze(dataUrl,id){
     const {data,error}=await sb.functions.invoke("hk-analyze",{body:id?{image:dataUrl,id}:{image:dataUrl}});
     if(error){
       let code="";try{const j=await error.context.json();code=j.error}catch(e){}
-      if(code==="rate_limited")return{error:"AI 요청이 몰려 분석하지 못했습니다. 잠시 후 다시 분석하거나 직접 입력해 주세요."};
+      if(code==="rate_limited")return{error:"무료 AI가 지금 붐벼서 읽지 못했습니다. 그대로 등록하면 몇 분 뒤 자동으로 다시 분석합니다."};
       if(code==="no_key")return{error:"AI 키가 아직 설정되지 않았습니다. 직접 입력해 주세요."};
-      return{error:"AI가 사진을 읽지 못했습니다. 직접 입력해 주세요."};
+      return{error:"AI가 사진을 읽지 못했습니다. 그대로 등록하면 나중에 자동으로 다시 분석합니다."};
     }
-    return data&&data.result?data.result:{error:"AI가 사진을 읽지 못했습니다. 직접 입력해 주세요."};
-  }catch(e){return{error:"인터넷 연결이 불안정해 AI 분석을 못 했습니다. 직접 입력해 주세요."}}
+    return data&&data.result?data.result:{error:"AI가 사진을 읽지 못했습니다. 그대로 등록하면 나중에 자동으로 다시 분석합니다."};
+  }catch(e){return{error:"인터넷 연결이 불안정해 AI 분석을 못 했습니다. 그대로 등록하면 나중에 자동으로 다시 분석합니다."}}
 }
 function findDup(name,brand){
   const n=(name||"").toLowerCase().replace(/\s+/g,"");if(n.length<3)return null;
@@ -673,7 +673,7 @@ async function saveDraft(){
     d.saved=true;putRow(data);render();
     if(doc.store)ls("hkb_store",doc.store);
     S.busy=false;closeSheet();
-    toast(aiStatus==="pending"?"등록했습니다. AI 결과는 곧 자동으로 채워집니다.":"등록했습니다. 팀원 모두에게 바로 보입니다.");
+    toast(aiStatus==="pending"?"등록했습니다. AI 결과는 곧 자동으로 채워집니다.":aiStatus==="failed"?"등록했습니다. AI는 몇 분 뒤 자동으로 다시 분석합니다.":"등록했습니다. 팀원 모두에게 바로 보입니다.");
     // the AI may have answered between the start of the insert and now
     if(aiStatus==="pending"&&d.aiState==="ok")applyToSaved(d.id,d.ai);
     if(aiStatus==="pending"&&d.aiState==="err")applyToSaved(d.id,{error:d.aiErr});
@@ -710,7 +710,7 @@ function renderDetail(){
   const ed=S.edit;const p=ed&&S.products.find(x=>x.id===ed.id);if(!p)return;
   const stale=p.aiStatus==="pending"&&Date.now()-p.updatedAt>120000;
   const ai=p.aiStatus==="pending"&&!stale?`<div class="ai"><div class="tag">AI 분석 중</div><p>결과가 나오면 빈 칸이 자동으로 채워집니다.</p></div>`
-    :(p.aiStatus==="failed"||stale||(!p.ai&&!p.summary))?`<div class="ai"><div class="tag">${p.aiStatus==="failed"?"AI 분석 실패":stale?"AI 분석이 늦어지고 있습니다":"AI 분석 없음"}</div><p>다시 분석하면 비어 있는 칸만 채웁니다.</p><button class="chip" id="detAI" style="margin-top:8px">AI 다시 분석</button></div>`:"";
+    :(p.aiStatus==="failed"||stale||(!p.ai&&!p.summary))?`<div class="ai"><div class="tag">${p.aiStatus==="failed"?"AI 대기":stale?"AI 분석이 늦어지고 있습니다":"AI 분석 없음"}</div><p>${p.aiStatus==="failed"||stale?"무료 AI가 붐벼 아직 못 읽었습니다. 등록한 폰에서 앱이 열려 있으면 몇 분마다 자동으로 다시 시도합니다.":"다시 분석하면 비어 있는 칸만 채웁니다."}</p><button class="chip" id="detAI" style="margin-top:8px">AI 다시 분석</button></div>`:"";
   const title=ed.kind==="idea"?(ed.f.summary||"박람회·참고"):(ed.f.name||"제품");
   openSheet(`<h3>${esc(title)}</h3>
     <div class="gal" id="detGal"></div>
@@ -731,19 +731,38 @@ async function refreshDetailGallery(){
 function markDirty(){if(S.edit)S.edit.dirty=true;const b=$("#detSave");if(b){b.disabled=false;b.textContent="변경 저장"}}
 document.addEventListener("input",e=>{if(S.openId&&e.target.id&&e.target.id.startsWith("e_"))markDirty()});
 document.addEventListener("change",e=>{if(S.openId&&e.target.id==="e_category")markDirty()});
-async function reanalyze(id){
-  const p=S.products.find(x=>x.id===id);if(!p||!p.photos.length){toast("사진이 없어 분석할 수 없습니다.");return}
+async function reanalyze(id,quiet){
+  const p=S.products.find(x=>x.id===id);if(!p||!p.photos.length){if(!quiet)toast("사진이 없어 분석할 수 없습니다.");return}
   try{
     await patchProduct(id,{ai_status:"pending"});
     if(S.openId===id&&S.edit&&!S.edit.dirty)openDetail(id);
-    toast("AI가 다시 분석합니다. 결과는 자동으로 채워집니다.");
+    if(!quiet)toast("AI가 다시 분석합니다. 결과는 자동으로 채워집니다.");
     const src=await photoSrc(p.photos[0]);const blob=await (await fetch(src)).blob();
     const img=await loadImg(blob);
     const r=await analyze(draw(img,1024).toDataURL("image/jpeg",.8),id);
     await applyToSaved(id,r);
-    if(r.error)toast(r.error);
-  }catch(e){console.error(e);toast("다시 분석하지 못했습니다. 네트워크를 확인해 주세요.");try{await patchProduct(id,{ai_status:"failed"})}catch(_){}}
+    if(r.error&&!quiet)toast(r.error);
+  }catch(e){console.error(e);if(!quiet)toast("다시 분석하지 못했습니다. 네트워크를 확인해 주세요.");try{await patchProduct(id,{ai_status:"failed"})}catch(_){}}
 }
+
+/* ---------- automatic re-analysis while the free AI is busy ---------- */
+// Only the phone that registered a record retries it, one record at a time, at most once a minute,
+// waiting 1.5 min after the last try and giving up after RETRY_MAX tries.
+const RETRY_MAX=6;let retrying=false;
+function retryMap(){try{return JSON.parse(localStorage.getItem("hkb_retry")||"{}")}catch(e){return{}}}
+function bumpRetry(id){try{const m=retryMap();m[id]=(m[id]||0)+1;localStorage.setItem("hkb_retry",JSON.stringify(m))}catch(e){}}
+async function autoRetry(){
+  if(retrying||!S.started||!navigator.onLine||document.hidden||S.busy)return;
+  const now=Date.now(),tries=retryMap();
+  const p=S.products.filter(x=>x.member===S.member&&x.photos.length&&(tries[x.id]||0)<RETRY_MAX&&now-x.updatedAt>90000
+    &&(x.aiStatus==="failed"||(x.aiStatus==="pending"&&now-x.updatedAt>240000))).sort((a,b)=>a.updatedAt-b.updatedAt)[0];
+  if(!p)return;
+  retrying=true;bumpRetry(p.id);
+  try{await reanalyze(p.id,true)}finally{retrying=false}
+}
+setInterval(autoRetry,60000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(autoRetry,5000)});
+window.addEventListener("online",()=>setTimeout(autoRetry,5000));
 document.addEventListener("click",async e=>{
   const img=e.target.closest(".gal img.ph1");if(img&&img.src){$("#viewerImg").src=img.src;$("#viewer").classList.add("show");return}
   const t=e.target.closest("button");if(!t||!S.openId)return;
