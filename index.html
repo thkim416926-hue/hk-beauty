@@ -182,6 +182,23 @@ img{max-width:100%;display:block}
 .splash .err{color:#fff;font-size:13px;min-height:18px}
 .splash .who4{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .splash .btn{background:#fff;color:var(--pink);width:100%;font-size:17px}
+
+/* product / trade-show split, keywords, purchase */
+.kind{display:flex;gap:4px;margin-top:14px;background:var(--bg);border-radius:999px;padding:4px}
+.kind button{flex:1;height:40px;border-radius:999px;font-size:14px;color:var(--muted)}
+.kind button.on{background:#fff;color:var(--pink);font-weight:600;box-shadow:0 2px 10px -4px rgba(234,76,137,.55)}
+.kw{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.kw button{font-size:13px;border-radius:999px;padding:6px 12px;background:#fff;border:1px solid var(--line);color:var(--ink)}
+.kw button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+.buy{margin-top:18px;width:100%;height:52px;border-radius:16px;border:1.5px dashed #f2b6d0;background:#fff;color:var(--pink);font-weight:500;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px}
+.buy.on{border-style:solid;border-color:var(--pink);background:var(--soft)}
+.badge{font-size:10px;border-radius:999px;padding:1px 7px;background:var(--pink);color:#fff;white-space:nowrap}
+.badge.idea{background:#8b6fd6}
+.badge.wait{background:#fff;color:var(--pink);border:1px solid #f2c4da}
+.item .rs .k{color:#8b6fd6}
+.hint{font-size:12px;color:var(--muted);text-align:center;margin:10px 0 0}
+.kinds{display:flex;gap:6px;margin-top:8px}
+.kinds .chip{flex:1;text-align:center;padding:6px 0;font-size:13px}
 </style>
 </head>
 <body>
@@ -189,7 +206,7 @@ img{max-width:100%;display:block}
 
 <div class="bar" id="bar"><div class="in">
   <button class="btn sec" id="btnAlbum" aria-label="앨범에서 사진 선택"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>앨범</button>
-  <button class="btn pri" id="btnCam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>제품 촬영</button>
+  <button class="btn pri" id="btnCam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>촬영</button>
 </div></div>
 
 <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
@@ -214,10 +231,11 @@ const REASONS=["신제품","현지 베스트셀러","패키지 디자인","가�
 const STORES=["Cosmoprof 박람회","Mannings","Watsons","SaSa","Bonjour","백화점","편집숍","드럭스토어 기타"];
 const MEMBERS=["미진","수연","은조","규리"];
 const DOW=["SUN","MON","TUE","WED","THU","FRI","SAT"];
+const KEYWORDS=["칼선","제형","원료","용기","패키지","컬러","디스플레이","콘셉트"];
 
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
-const S={products:[],loading:true,err:"",day:null,mine:false,cat:"",q:"",member:"",urlCache:{},
-  draft:null,openId:null,pickMode:null,busy:false,started:false};
+const S={products:[],raw:{},loading:true,err:"",day:null,mine:false,cat:"",q:"",kf:"",kwf:"",member:"",urlCache:{},
+  draft:null,edit:null,openId:null,pickMode:null,busy:false,started:false};
 
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k)||"";localStorage.setItem(k,v)}catch(e){return""}}
 function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove("show"),2800)}
@@ -225,15 +243,24 @@ function dayKey(ms){const d=new Date(ms);return d.getFullYear()+"-"+String(d.get
 function fmtTime(ms){const d=new Date(ms);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
 function who(p){return(p&&p.member)||"팀원"}
 function initial(p){return who(p).slice(0,1)}
-function newId(){return(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2))}
+function newId(){
+  if(crypto.randomUUID)return crypto.randomUUID();
+  const b=crypto.getRandomValues(new Uint8Array(16));b[6]=b[6]&15|64;b[8]=b[8]&63|128;
+  const h=[...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+  return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20);
+}
+const isIdea=p=>p&&p.kind==="idea";
 
 /* ---------- rows ---------- */
 function fromRow(r){return{id:r.id,name:r.name||"",brand:r.brand||"",category:r.category||"",country:r.country||"",madeIn:r.made_in||"",maker:r.maker||"",
   summary:r.summary||"",reason:r.reason||"",store:r.store||"",memo:r.memo||"",thumb:r.thumb||"",photos:Array.isArray(r.photos)?r.photos:[],
-  member:r.member||"",ai:!!r.ai,createdAt:Date.parse(r.created_at)||Date.now()}}
-function toRow(o){const r={};const map={madeIn:"made_in"};
-  Object.keys(o).forEach(k=>{if(["id","createdAt"].includes(k))return;r[map[k]||k]=o[k]});return r}
+  member:r.member||"",ai:!!r.ai,kind:r.kind||"",keywords:Array.isArray(r.keywords)?r.keywords:[],purchased:!!r.purchased,aiStatus:r.ai_status||"",
+  createdAt:Date.parse(r.created_at)||Date.now(),updatedAt:Date.parse(r.updated_at)||Date.parse(r.created_at)||Date.now()}}
+function toRow(o){const r={};const map={madeIn:"made_in",aiStatus:"ai_status"};
+  Object.keys(o).forEach(k=>{if(["id","createdAt","updatedAt"].includes(k))return;r[map[k]||k]=o[k]});return r}
 function upsertLocal(p){const i=S.products.findIndex(x=>x.id===p.id);if(i>=0)S.products[i]=p;else S.products.push(p)}
+// Live updates can leave out unchanged large columns (thumb, photos): merge them over what we already have.
+function putRow(r){if(!r||!r.id)return;S.raw[r.id]=Object.assign({},S.raw[r.id]||{},r);upsertLocal(fromRow(S.raw[r.id]))}
 
 /* ---------- auth / start ---------- */
 async function boot(){
@@ -270,8 +297,8 @@ function start(){
   if(S.started)return;S.started=true;
   load();
   sb.channel("hk-products").on("postgres_changes",{event:"*",schema:"public",table:"hk_products"},pl=>{
-    if(pl.eventType==="DELETE"){S.products=S.products.filter(p=>p.id!==(pl.old&&pl.old.id))}
-    else if(pl.new&&pl.new.id){upsertLocal(fromRow(pl.new))}
+    if(pl.eventType==="DELETE"){const id=pl.old&&pl.old.id;S.products=S.products.filter(p=>p.id!==id);delete S.raw[id]}
+    else if(pl.new&&pl.new.id){putRow(pl.new);if(S.openId===pl.new.id&&S.edit&&!S.edit.dirty){openDetail(pl.new.id);render();return}}
     render();if(S.openId)refreshDetailGallery();
   }).subscribe();
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load(true)});
@@ -287,7 +314,7 @@ async function load(quiet){
     if(error.code==="PGRST301"||/JWT|auth/i.test(error.message)){S.started=false;return showLogin("로그인이 만료되었습니다. 다시 로그인해 주세요.")}
     S.err="목록을 불러오지 못했습니다. 인터넷 연결을 확인하고 앱을 다시 열어 주세요.";render();return;
   }
-  S.err="";S.products=(data||[]).map(fromRow);
+  S.err="";S.raw={};(data||[]).forEach(r=>S.raw[r.id]=r);S.products=(data||[]).map(fromRow);
   if(!S.products.length&&!quiet){const {data:ok}=await sb.rpc("hk_is_team");if(ok===false)S.err="이 계정은 팀 명단에 없습니다. 팀장님께 확인해 주세요."}
   render();if(S.openId)refreshDetailGallery();
 }
@@ -298,8 +325,10 @@ function filtered(){
   return S.products.filter(p=>{
     if(S.day&&dayKey(p.createdAt)!==S.day)return false;
     if(S.mine&&p.member!==S.member)return false;
+    if(S.kf&&(S.kf==="idea")!==isIdea(p))return false;
+    if(S.kwf&&!p.keywords.includes(S.kwf))return false;
     if(S.cat&&p.category!==S.cat)return false;
-    if(q&&![p.name,p.brand,p.country,p.madeIn,p.maker,p.reason,p.store,p.memo,p.summary].join(" ").toLowerCase().includes(q))return false;
+    if(q&&![p.name,p.brand,p.country,p.madeIn,p.maker,p.reason,p.store,p.memo,p.summary,p.keywords.join(" ")].join(" ").toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>b.createdAt-a.createdAt);
 }
@@ -307,7 +336,7 @@ function headerHTML(){
   const monthLbl=new Date().toLocaleDateString("en-US",{month:"long",year:"numeric"});
   return `<div class="top"><div><h1>${esc(monthLbl)}</h1><small>홍콩 뷰티 시장조사 · ${esc(S.member||"팀 공유")}</small></div>
     <button class="iconbtn" id="btnExport" aria-label="엑셀 내보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 17v3h14v-3"/></svg></button></div>
-    <div class="seg" role="tablist"><button role="tab" class="${S.view==="plan"?"":"on"}" data-view="log">제품 기록</button><button role="tab" class="${S.view==="plan"?"on":""}" data-view="plan">목 11/12 일정</button></div>`;
+    <div class="seg" role="tablist"><button role="tab" class="${S.view==="plan"?"":"on"}" data-view="log">기록</button><button role="tab" class="${S.view==="plan"?"on":""}" data-view="plan">목 11/12 일정</button></div>`;
 }
 
 /* ---------- Thursday field-trip plan ---------- */
@@ -365,27 +394,37 @@ function render(){
   h+=`<div class="days" aria-label="날짜별 보기"><button class="day all ${S.day?"":"on"}" data-day=""><b>전체</b><span>${P.length}</span></button>`;
   days.forEach(k=>{const d=new Date(k+"T00:00");h+=`<button class="day ${S.day===k?"on":""}" data-day="${k}"><b>${d.getDate()}</b><span>${DOW[d.getDay()]}</span><i class="${counts[k]?"":"none"}"></i></button>`});
   h+=`</div>`;
+  const nIdea=P.filter(isIdea).length,nProd=P.length-nIdea,nBuy=P.filter(p=>!isIdea(p)&&p.purchased).length;
   h+=`<div class="hero"><div class="lbl">리서치</div><div class="big">day ${tripDay}</div>
-    <div class="row"><div><b>${counts[today]||0}</b>오늘 등록</div><div><b>${P.length}</b>전체 제품</div><div><b>${photoN}</b>사진</div><div><b>${members}</b>참여 팀원</div></div></div>`;
+    <div class="row"><div><b>${counts[today]||0}</b>오늘 등록</div><div><b>${nProd}</b>제품</div><div><b>${nBuy}</b>구매</div><div><b>${nIdea}</b>박람회·참고</div><div><b>${photoN}</b>사진</div></div></div>`;
   if(!navigator.onLine)h+=`<div class="note">인터넷 연결이 끊겨 있습니다. 연결되면 등록해 주세요.</div>`;
   if(S.err)h+=`<div class="note">${esc(S.err)}</div>`;
   h+=`<div class="panel"><div class="grip"></div><div class="ph"><h2>Timelines</h2>
     <div class="chips"><button class="chip ${S.mine?"":"on"}" data-mine="0">팀 전체</button><button class="chip ${S.mine?"on":""}" data-mine="1">내 기록</button></div></div>
-    <input class="search" id="q" type="search" placeholder="제품명, 브랜드, 제조사, 구매처, 메모 검색" value="${esc(S.q)}">
+    <input class="search" id="q" type="search" placeholder="제품명, 브랜드, 키워드, 장소, 메모 검색" value="${esc(S.q)}">
+    <div class="kinds"><button class="chip ${S.kf?"":"on"}" data-kf="">전체 ${P.length}</button><button class="chip ${S.kf==="product"?"on":""}" data-kf="product">제품 ${nProd}</button><button class="chip ${S.kf==="idea"?"on":""}" data-kf="idea">박람회·참고 ${nIdea}</button></div>
+    ${S.kf==="idea"?`<div class="chips" style="margin-top:6px"><button class="chip ${S.kwf?"":"on"}" data-kwf="">키워드 전체</button>${KEYWORDS.filter(k=>P.some(p=>isIdea(p)&&p.keywords.includes(k))).map(k=>`<button class="chip ${S.kwf===k?"on":""}" data-kwf="${esc(k)}">#${esc(k)}</button>`).join("")}</div>`:""}
     <div class="chips" style="margin-top:6px"><button class="chip ${S.cat?"":"on"}" data-cat="">All</button>${CATS.filter(c=>P.some(p=>p.category===c)).map(c=>`<button class="chip ${S.cat===c?"on":""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")}</div>`;
   if(S.loading&&!P.length)h+=`<div class="empty"><div class="shimmer"></div><div class="shimmer" style="width:70%"></div></div>`;
-  else if(!list.length)h+=P.length?`<div class="empty"><b>조건에 맞는 제품이 없습니다</b>필터를 바꿔 보세요.</div>`:`<div class="empty"><b>첫 제품을 촬영해 보세요</b>아래 <b style="display:inline;color:var(--pink)">제품 촬영</b> 버튼을 누르면 AI가 제품을 알아보고 등록을 도와줍니다.</div>`;
+  else if(!list.length)h+=P.length?`<div class="empty"><b>조건에 맞는 기록이 없습니다</b>필터를 바꿔 보세요.</div>`:`<div class="empty"><b>첫 사진을 찍어 보세요</b>아래 <b style="display:inline;color:var(--pink)">촬영</b> 버튼을 누르면 AI가 제품인지 박람회·참고 사진인지 구분해 채워 줍니다.</div>`;
   else{
     h+=`<div class="tl">`;
     groups.forEach(g=>{const d=new Date(g.k+"T00:00");
       h+=`<div class="grp"><div class="when">${d.getDate()} ${d.toLocaleDateString("en-US",{month:"short"}).toLowerCase()}<small>${g.items.length}개</small></div><div class="items">`;
       g.items.forEach(p=>{
+        const idea=isIdea(p),wait=p.aiStatus==="pending";
+        const title=idea?(p.summary||p.name||"박람회·참고"):(p.name||(wait?"AI 분석 중…":"이름 없음"));
+        const l2=idea?(p.keywords.length?`<span class="k">${p.keywords.map(k=>"#"+esc(k)).join(" ")}</span>`:esc(p.brand||"키워드 없음"))
+          :p.purchased?esc(p.reason||"구매함"):"분석만 · 미구매";
+        const l3=idea?esc([p.brand,p.store].filter(Boolean).join(" · ")||"장소 미입력")
+          :esc([p.purchased?p.store:"",p.brand,p.country].filter(Boolean).join(" · ")||"브랜드 미입력");
+        const badge=wait?`<span class="badge wait">AI 분석 중</span>`:idea?`<span class="badge idea">박람회</span>`:p.purchased?`<span class="badge">구매</span>`:"";
         h+=`<div class="sw"><button class="swdel" data-del="${esc(p.id)}">삭제</button><button class="item" data-open="${esc(p.id)}">
           ${p.thumb?`<img class="th" src="${esc(p.thumb)}" alt="">`:`<div class="th"></div>`}
-          <div style="min-width:0"><div class="nm">${esc(p.name||"이름 없음")}</div>
-          <div class="rs">${esc(p.reason||"구매 이유 미입력")}</div>
-          <div class="st">${esc(p.store||"구매처 미입력")}${p.country?" · "+esc(p.country):""}</div></div>
-          <div class="mt"><span class="who" title="${esc(who(p))}">${esc(initial(p))}</span><span class="pc">📷 ${p.photos.length}</span><span>${fmtTime(p.createdAt)}</span></div></button></div>`});
+          <div style="min-width:0"><div class="nm">${esc(title)}</div>
+          <div class="rs">${l2}</div>
+          <div class="st">${l3}</div></div>
+          <div class="mt">${badge}<span class="who" title="${esc(who(p))}">${esc(initial(p))}</span><span>${fmtTime(p.createdAt)}</span></div></button></div>`});
       h+=`</div></div>`});
     h+=`</div>`;
   }
@@ -403,6 +442,8 @@ document.addEventListener("click",e=>{
   if(t.dataset.day!==undefined){S.day=t.dataset.day||null;render();return}
   if(t.dataset.mine!==undefined){S.mine=t.dataset.mine==="1";render();return}
   if(t.dataset.cat!==undefined){S.cat=t.dataset.cat;render();return}
+  if(t.dataset.kf!==undefined){S.kf=t.dataset.kf;S.kwf="";render();return}
+  if(t.dataset.kwf!==undefined){S.kwf=t.dataset.kwf;render();return}
   if(t.dataset.open){openDetail(t.dataset.open);return}
   if(t.id==="btnExport"){openExport();return}
   if(t.id==="btnCam"){S.pickMode={kind:"new"};$("#fCam").click();return}
@@ -422,7 +463,7 @@ $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeSheet()});
 $("#viewer").addEventListener("click",()=>$("#viewer").classList.remove("show"));
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#viewer").classList.contains("show"))$("#viewer").classList.remove("show");else closeSheet()}});
 function openSheet(html){$("#sheet").innerHTML=`<div class="grip"></div>`+html;$("#ov").classList.add("show")}
-function closeSheet(){if(S.busy)return;$("#ov").classList.remove("show");S.openId=null;S.draft=null}
+function closeSheet(){if(S.busy)return;$("#ov").classList.remove("show");S.openId=null;S.draft=null;S.edit=null}
 
 /* ---------- images ---------- */
 function loadImg(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=u})}
@@ -433,7 +474,8 @@ function draw(img,max,square){
 const toBlob=(c,q)=>new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",q));
 async function prep(file){
   const img=await loadImg(file);
-  return{full:await toBlob(draw(img,1600),.82),ai:draw(img,1280).toDataURL("image/jpeg",.82),thumb:draw(img,200,true).toDataURL("image/jpeg",.72),preview:draw(img,400).toDataURL("image/jpeg",.75)};
+  // the AI copy is kept small (1024px) so it uploads and gets read faster
+  return{full:await toBlob(draw(img,1600),.82),ai:draw(img,1024).toDataURL("image/jpeg",.8),thumb:draw(img,200,true).toDataURL("image/jpeg",.72),preview:draw(img,400).toDataURL("image/jpeg",.75)};
 }
 async function storePhoto(p){
   const path=`${dayKey(Date.now())}/${newId()}.jpg`;
@@ -450,58 +492,97 @@ async function photoSrc(ph){
 }
 
 /* ---------- AI ---------- */
-async function analyze(dataUrl,retry){
+// The server retries busy AI itself. With a record id it also writes the result into that record,
+// so registering never has to wait for the AI.
+async function analyze(dataUrl,id){
   try{
-    const {data,error}=await sb.functions.invoke("hk-analyze",{body:{image:dataUrl}});
+    const {data,error}=await sb.functions.invoke("hk-analyze",{body:id?{image:dataUrl,id}:{image:dataUrl}});
     if(error){
       let code="";try{const j=await error.context.json();code=j.error}catch(e){}
-      if(code==="rate_limited"&&!retry){await new Promise(r=>setTimeout(r,1500));return analyze(dataUrl,true)}
-      if(code==="rate_limited")return{error:"AI 요청이 몰렸습니다. 잠시 후 다시 분석하거나 직접 입력해 주세요."};
+      if(code==="rate_limited")return{error:"AI 요청이 몰려 분석하지 못했습니다. 잠시 후 다시 분석하거나 직접 입력해 주세요."};
       if(code==="no_key")return{error:"AI 키가 아직 설정되지 않았습니다. 직접 입력해 주세요."};
-      return{error:"AI가 제품을 읽지 못했습니다. 직접 입력해 주세요."};
+      return{error:"AI가 사진을 읽지 못했습니다. 직접 입력해 주세요."};
     }
-    return data&&data.result?data.result:{error:"AI가 제품을 읽지 못했습니다. 직접 입력해 주세요."};
+    return data&&data.result?data.result:{error:"AI가 사진을 읽지 못했습니다. 직접 입력해 주세요."};
   }catch(e){return{error:"인터넷 연결이 불안정해 AI 분석을 못 했습니다. 직접 입력해 주세요."}}
 }
 function findDup(name,brand){
   const n=(name||"").toLowerCase().replace(/\s+/g,"");if(n.length<3)return null;
-  return S.products.find(p=>{const pn=(p.name||"").toLowerCase().replace(/\s+/g,"");return pn&&(pn===n||(pn.length>5&&(pn.includes(n)||n.includes(pn))))&&(!brand||!p.brand||p.brand.toLowerCase()===brand.toLowerCase())})||null;
+  return S.products.find(p=>{if(isIdea(p))return false;const pn=(p.name||"").toLowerCase().replace(/\s+/g,"");return pn&&(pn===n||(pn.length>5&&(pn.includes(n)||n.includes(pn))))&&(!brand||!p.brand||p.brand.toLowerCase()===brand.toLowerCase())})||null;
+}
+// which fields the AI may fill, by kind ([db column, field])
+function aiCols(kind){
+  const c=[["name","name"],["brand","brand"],["category","category"],["summary","summary"]];
+  return kind==="idea"?c:c.concat([["country","country"],["made_in","madeIn"],["maker","maker"]]);
+}
+// AI finished after the record was saved: fill what is still empty (the server normally did this already).
+async function applyToSaved(id,r){
+  const p=S.products.find(x=>x.id===id);if(!p)return;
+  if(r.error){if(p.aiStatus==="pending"){try{await patchProduct(id,{ai_status:"failed"})}catch(e){}}return}
+  const kind=p.kind||r.kind;const upd={};
+  if(!p.kind&&r.kind)upd.kind=r.kind;
+  aiCols(kind).forEach(([c,k])=>{if(!p[k]&&r[k])upd[c]=r[k]});
+  if(kind==="idea"&&!p.keywords.length&&Array.isArray(r.keywords)&&r.keywords.length)upd.keywords=r.keywords;
+  if(Object.keys(upd).length||p.aiStatus!=="done"){upd.ai=true;upd.ai_status="done";try{await patchProduct(id,upd)}catch(e){}}
 }
 
-/* ---------- draft (new product) ---------- */
+/* ---------- draft (new record) ---------- */
 function startDraft(preps){
   const f={};FIELDS.forEach(k=>f[k]="");f.store=ls("hkb_store");
-  S.draft={photos:preps,ai:null,aiState:"run",dup:null,f};
-  renderDraft(true);runAI();
+  S.draft={id:newId(),photos:preps,ai:null,aiState:"run",dup:null,f,kind:"",kindByUser:false,keywords:[],purchased:false,saved:false};
+  renderDraft(true);runAI(S.draft);
 }
-async function runAI(){
-  const d=S.draft;if(!d)return;readForm();d.aiState="run";renderDraft(true);
-  const r=await analyze(d.photos[0].ai);if(S.draft!==d)return;
-  readForm();
+async function runAI(d){
+  if(!d)return;
+  if(S.draft===d&&!S.busy){readForm();d.aiState="run";renderDraft(true)}else d.aiState="run";
+  const r=await analyze(d.photos[0].ai,d.id);
+  if(d.saved){await applyToSaved(d.id,r);return}
+  if(S.draft!==d)return; // cancelled or merged into another record
+  if(!S.busy)readForm();
   if(r.error){d.aiState="err";d.aiErr=r.error}
-  else{
-    d.aiState="ok";d.ai=r;const f=d.f;
-    ["name","brand","summary","country","madeIn","maker"].forEach(k=>{if(!f[k]&&r[k])f[k]=String(r[k])});
-    if(!f.category&&CATS.includes(r.category))f.category=r.category;
-    d.dup=findDup(f.name,f.brand);
-  }
-  renderDraft(true);
+  else{d.aiState="ok";d.ai=r;applyAI(d,r)}
+  if(!S.busy)renderDraft(true);
+}
+function applyAI(d,r){
+  const f=d.f;
+  if(!d.kindByUser&&(r.kind==="idea"||r.kind==="product"))d.kind=r.kind;
+  const kind=d.kind||r.kind;
+  aiCols(kind).forEach(([,k])=>{if(!f[k]&&r[k])f[k]=String(r[k])});
+  if(f.category&&!CATS.includes(f.category))f.category="";
+  if(kind==="idea"&&!d.keywords.length&&Array.isArray(r.keywords))d.keywords=r.keywords.filter(k=>KEYWORDS.includes(k));
+  d.dup=kind==="product"?findDup(f.name,f.brand):null;
 }
 function readForm(){const d=S.draft;if(!d)return;FIELDS.forEach(k=>{const el=$("#d_"+k);if(el)d.f[k]=el.value})}
-function fieldsHTML(f,pre){
+function kindHTML(kind,sc){
+  return`<div class="kind" role="group" aria-label="구분"><button type="button" class="${kind==="product"?"on":""}" data-kind="product" data-sc="${sc}">제품</button><button type="button" class="${kind==="idea"?"on":""}" data-kind="idea" data-sc="${sc}">박람회·참고</button></div>`;
+}
+const catSelect=(f,pre)=>`<select id="${pre}category"><option value="">선택</option>${CATS.map(c=>`<option ${f.category===c?"selected":""}>${c}</option>`).join("")}</select>`;
+function formHTML(f,pre,kind,keywords,purchased){
+  const sc=pre==="d_"?"d":"e";
+  const memo=(ph)=>`<div class="f"><label for="${pre}memo">메모</label><textarea id="${pre}memo" placeholder="${ph}">${esc(f.memo)}</textarea></div>`;
+  if(!kind)return memo("진열 위치, 프로모션, 직원 코멘트 등")+`<p class="hint">AI가 제품인지 박람회·참고 사진인지 판단하면 맞는 칸이 나타납니다. 위에서 직접 고를 수도 있습니다.</p>`;
+  if(kind==="idea")return`<div class="f"><label for="${pre}summary">한 줄 정리 · 특이한 점</label><textarea id="${pre}summary" style="min-height:56px" placeholder="예) 이마·볼·턱을 나눈 분할 칼선 시트 마스크">${esc(f.summary)}</textarea></div>
+    <div class="f"><label>키워드</label><div class="kw">${KEYWORDS.map(k=>`<button type="button" class="${keywords.includes(k)?"on":""}" data-fkw="${k}" data-sc="${sc}">${k}</button>`).join("")}</div></div>
+    <div class="two"><div class="f"><label for="${pre}brand">브랜드·업체</label><input id="${pre}brand" value="${esc(f.brand)}"></div>
+    <div class="f"><label for="${pre}category">카테고리</label>${catSelect(f,pre)}</div></div>
+    <div class="f"><label for="${pre}name">제품명 (보이면)</label><input id="${pre}name" value="${esc(f.name)}"></div>
+    <div class="f"><label for="${pre}store">장소·부스</label><input id="${pre}store" value="${esc(f.store)}" placeholder="예) Cosmoprof 3E-B12">
+      <div class="qc">${STORES.map(r=>`<button type="button" data-set="${pre}store" data-v="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>
+    ${memo("직원 설명, 원료사, 단가 등")}`;
   return`<div class="two"><div class="f"><label for="${pre}name">제품명</label><input id="${pre}name" value="${esc(f.name)}" placeholder="예) Hydrating Toner"></div>
     <div class="f"><label for="${pre}brand">브랜드</label><input id="${pre}brand" value="${esc(f.brand)}"></div></div>
-    <div class="two"><div class="f"><label for="${pre}category">카테고리</label><select id="${pre}category"><option value="">선택</option>${CATS.map(c=>`<option ${f.category===c?"selected":""}>${c}</option>`).join("")}</select></div>
+    <div class="two"><div class="f"><label for="${pre}category">카테고리</label>${catSelect(f,pre)}</div>
     <div class="f"><label for="${pre}country">브랜드 국적</label><input id="${pre}country" value="${esc(f.country)}" placeholder="예) 한국"></div></div>
     <div class="qc" style="margin-top:6px">${COUNTRIES.map(r=>`<button type="button" data-set="${pre}country" data-v="${esc(r)}">${esc(r)}</button>`).join("")}</div>
     <div class="two"><div class="f"><label for="${pre}madeIn">제조국</label><input id="${pre}madeIn" value="${esc(f.madeIn)}" placeholder="예) 한국"></div>
     <div class="f"><label for="${pre}maker">제조사</label><input id="${pre}maker" value="${esc(f.maker)}" placeholder="예) 코스맥스"></div></div>
-    <div class="f"><label for="${pre}reason">구매 이유</label><textarea id="${pre}reason" placeholder="왜 이 제품을 샀는지">${esc(f.reason)}</textarea>
+    <div class="f"><label for="${pre}summary">제품 설명</label><textarea id="${pre}summary">${esc(f.summary)}</textarea></div>
+    ${memo("진열 위치, 프로모션, 직원 코멘트 등")}
+    <button type="button" class="buy ${purchased?"on":""}" data-buy="1" data-sc="${sc}" aria-pressed="${purchased}">${purchased?"✓ 구매함":"🛍 구매했으면 누르기"}</button>
+    ${purchased?`<div class="f"><label for="${pre}reason">구매 이유</label><textarea id="${pre}reason" placeholder="왜 이 제품을 샀는지">${esc(f.reason)}</textarea>
       <div class="qc">${REASONS.map(r=>`<button type="button" data-append="${pre}reason" data-v="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>
     <div class="f"><label for="${pre}store">구매처</label><input id="${pre}store" value="${esc(f.store)}" placeholder="매장명, 지점, 박람회 부스 번호">
-      <div class="qc">${STORES.map(r=>`<button type="button" data-set="${pre}store" data-v="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>
-    <div class="f"><label for="${pre}summary">제품 설명</label><textarea id="${pre}summary">${esc(f.summary)}</textarea></div>
-    <div class="f"><label for="${pre}memo">메모</label><textarea id="${pre}memo" placeholder="진열 위치, 프로모션, 직원 코멘트 등">${esc(f.memo)}</textarea></div>`;
+      <div class="qc">${STORES.map(r=>`<button type="button" data-set="${pre}store" data-v="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`:""}`;
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest("button[data-append],button[data-set]");if(!b)return;
@@ -510,27 +591,43 @@ document.addEventListener("click",e=>{
   else el.value=el.value.trim()?(el.value.includes(v)?el.value:el.value.trim()+", "+v):v;
   el.dispatchEvent(new Event("input",{bubbles:true}));
 });
+// kind / keyword / purchase toggles, in the new-record sheet (sc=d) and the detail sheet (sc=e)
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button[data-kind],button[data-fkw],button[data-buy]");if(!b)return;
+  const draft=b.dataset.sc==="d";const st=draft?S.draft:S.edit;if(!st)return;
+  if(draft)readForm();else readEdit();
+  if(b.dataset.kind){st.kind=b.dataset.kind;if(draft)st.kindByUser=true}
+  else if(b.dataset.fkw){const k=b.dataset.fkw;st.keywords=st.keywords.includes(k)?st.keywords.filter(x=>x!==k):st.keywords.concat(k)}
+  else st.purchased=!st.purchased;
+  if(draft){st.dup=st.kind==="product"&&st.ai?findDup(st.f.name,st.f.brand):null;renderDraft(true)}
+  else{st.dirty=true;renderDetail()}
+});
+function aiCardHTML(d){
+  if(d.aiState==="run")return`<div class="ai"><div class="tag">AI 분석 중 · 기다리지 말고 바로 등록해도 됩니다</div><div class="shimmer"></div><div class="shimmer" style="width:70%"></div></div>`;
+  if(d.aiState==="err")return`<div class="ai"><div class="tag">AI 분석 실패</div><p>${esc(d.aiErr)}</p><button class="chip" id="retryAI" style="margin-top:8px">다시 분석</button></div>`;
+  if(d.aiState!=="ok")return"";
+  const r=d.ai;const low=r.confidence==="low"?" · 추정":"";
+  if(r.kind==="idea")return`<div class="ai"><div class="tag">AI 분석 · 박람회·참고${low}</div><p><b>${esc(r.summary||"")}</b></p>${(r.keywords||[]).length?`<p>${r.keywords.map(k=>"#"+esc(k)).join(" ")}</p>`:""}</div>`;
+  return`<div class="ai"><div class="tag">AI 분석 · 제품${low}</div><p><b>${esc(r.brand||"")} ${esc(r.name||"")}</b></p><p>${esc(r.summary||"")}</p></div>`;
+}
 function renderDraft(skipRead){
   const d=S.draft;if(!d)return;if(!skipRead)readForm();
-  let ai="";
-  if(d.aiState==="run")ai=`<div class="ai"><div class="tag">AI 제품 분석 중</div><div class="shimmer"></div><div class="shimmer" style="width:80%"></div><div class="shimmer" style="width:55%"></div></div>`;
-  else if(d.aiState==="ok")ai=`<div class="ai"><div class="tag">AI 분석 ${d.ai.confidence==="low"?"· 추정":""}</div><p><b>${esc(d.ai.brand||"")} ${esc(d.ai.name||"")}</b></p><p>${esc(d.ai.summary||"")}</p></div>`;
-  else if(d.aiState==="err")ai=`<div class="ai"><div class="tag">AI 분석 실패</div><p>${esc(d.aiErr)}</p><button class="chip" id="retryAI" style="margin-top:8px">다시 분석</button></div>`;
   const dup=d.dup?`<div class="dup"><span>이미 등록된 제품 같습니다: <b>${esc(d.dup.name)}</b></span><button class="chip on" id="toDup">여기에 사진 추가</button></div>`:"";
-  openSheet(`<h3>새 제품</h3>
+  openSheet(`<h3>새 기록</h3>
     <div class="gal">${d.photos.map(p=>`<img class="ph1" src="${p.preview}" alt="촬영한 사진">`).join("")}
       <button class="add" id="draftAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>사진 추가</button></div>
-    ${ai}${dup}
-    <div class="ask">이 제품을 등록하시겠습니까?</div>
-    ${fieldsHTML(d.f,"d_")}
-    <div class="acts"><button class="btn ghost" id="draftCancel">취소</button><button class="btn sec" id="toExisting">기존 제품에 추가</button></div>
-    <div class="acts" style="margin-top:10px"><button class="btn pri" id="draftSave">등록하기</button></div>`);
+    ${kindHTML(d.kind,"d")}
+    ${aiCardHTML(d)}${dup}
+    ${formHTML(d.f,"d_",d.kind,d.keywords,d.purchased)}
+    <div class="acts"><button class="btn ghost" id="draftCancel">취소</button><button class="btn sec" id="toExisting">기존 기록에 추가</button></div>
+    <div class="acts" style="margin-top:10px"><button class="btn pri" id="draftSave">등록하기</button></div>
+    ${d.aiState==="run"?`<p class="hint">지금 등록해도 AI 결과는 나오는 대로 기록에 자동으로 채워집니다.</p>`:""}`);
 }
 document.addEventListener("click",e=>{
   const t=e.target.closest("button");if(!t||!S.draft)return;
   if(t.id==="draftCancel")closeSheet();
   else if(t.id==="draftAdd"){readForm();S.pickMode={kind:"draft"};pickSource()}
-  else if(t.id==="retryAI")runAI();
+  else if(t.id==="retryAI")runAI(S.draft);
   else if(t.id==="draftSave")saveDraft();
   else if(t.id==="toDup")attachDraftTo(S.draft.dup.id);
   else if(t.id==="toExisting"){readForm();renderPicker()}
@@ -550,8 +647,8 @@ document.addEventListener("click",e=>{
 });
 function renderPicker(){
   const P=[...S.products].sort((a,b)=>b.createdAt-a.createdAt);
-  openSheet(`<h3>어느 제품에 사진을 추가할까요?</h3>
-    ${P.length?`<div class="pick">${P.map(p=>`<button class="item" data-pick="${esc(p.id)}">${p.thumb?`<img class="th" src="${esc(p.thumb)}" alt="">`:`<div class="th"></div>`}<div style="min-width:0"><div class="nm">${esc(p.name||"이름 없음")}</div><div class="st">${esc(p.brand||"")} · ${esc(p.store||"")}</div></div><div class="mt"><span class="pc">📷 ${p.photos.length}</span></div></button>`).join("")}</div>`:`<div class="empty">아직 등록된 제품이 없습니다.</div>`}
+  openSheet(`<h3>어느 기록에 사진을 추가할까요?</h3>
+    ${P.length?`<div class="pick">${P.map(p=>`<button class="item" data-pick="${esc(p.id)}">${p.thumb?`<img class="th" src="${esc(p.thumb)}" alt="">`:`<div class="th"></div>`}<div style="min-width:0"><div class="nm">${esc(isIdea(p)?(p.summary||p.name||"박람회·참고"):(p.name||"이름 없음"))}</div><div class="st">${esc([isIdea(p)?"박람회·참고":"제품",p.brand,p.store].filter(Boolean).join(" · "))}</div></div><div class="mt"><span class="pc">📷 ${p.photos.length}</span></div></button>`).join("")}</div>`:`<div class="empty">아직 등록된 기록이 없습니다.</div>`}
     <div class="acts"><button class="btn ghost" id="pickBack">돌아가기</button></div>`);
 }
 function saveErr(e){
@@ -562,23 +659,30 @@ function saveErr(e){
   return"저장하지 못했습니다. 네트워크를 확인하고 다시 눌러 주세요.";
 }
 async function saveDraft(){
-  readForm();const d=S.draft;const f=d.f;
+  readForm();const d=S.draft;
   const btn=$("#draftSave");btn.disabled=true;btn.textContent="저장 중…";S.busy=true;
   try{
     const photos=[];for(const p of d.photos)photos.push(await storePhoto(p));
-    const doc={};FIELDS.forEach(k=>doc[k]=String(f[k]||"").trim());
-    Object.assign(doc,{thumb:d.photos[0].thumb,photos,member:S.member,ai:d.aiState==="ok"});
-    const {data,error}=await sb.from("hk_products").insert(toRow(doc)).select().single();
+    // build the record after the uploads: the AI may have finished meanwhile
+    const f=d.f;const doc={};FIELDS.forEach(k=>doc[k]=String(f[k]||"").trim());
+    const kind=d.kind;const aiStatus=d.aiState==="run"?"pending":d.aiState==="ok"?"done":d.aiState==="err"?"failed":"";
+    Object.assign(doc,{kind,keywords:kind==="idea"?d.keywords:[],purchased:kind!=="idea"&&d.purchased,
+      thumb:d.photos[0].thumb,photos,member:S.member,ai:d.aiState==="ok",aiStatus});
+    const {data,error}=await sb.from("hk_products").insert(Object.assign({id:d.id},toRow(doc))).select().single();
     if(error)throw error;
-    upsertLocal(fromRow(data));render();
+    d.saved=true;putRow(data);render();
     if(doc.store)ls("hkb_store",doc.store);
-    S.busy=false;closeSheet();toast("등록했습니다. 팀원 모두에게 바로 보입니다.");
+    S.busy=false;closeSheet();
+    toast(aiStatus==="pending"?"등록했습니다. AI 결과는 곧 자동으로 채워집니다.":"등록했습니다. 팀원 모두에게 바로 보입니다.");
+    // the AI may have answered between the start of the insert and now
+    if(aiStatus==="pending"&&d.aiState==="ok")applyToSaved(d.id,d.ai);
+    if(aiStatus==="pending"&&d.aiState==="err")applyToSaved(d.id,{error:d.aiErr});
   }catch(e){console.error(e);S.busy=false;btn.disabled=false;btn.textContent="등록하기";toast(saveErr(e))}
 }
 async function patchProduct(id,upd){
   upd.updated_at=new Date().toISOString();
   const {data,error}=await sb.from("hk_products").update(upd).eq("id",id).select().single();
-  if(error)throw error;upsertLocal(fromRow(data));render();return data;
+  if(error)throw error;putRow(data);render();return data;
 }
 async function attachDraftTo(id){
   const d=S.draft;S.busy=true;toast("사진을 추가하는 중…");
@@ -597,44 +701,75 @@ async function attachDraftTo(id){
 /* ---------- detail ---------- */
 function openDetail(id){
   const p=S.products.find(x=>x.id===id);if(!p)return;S.openId=id;S.draft=null;
-  openSheet(`<h3>${esc(p.name||"제품")}</h3>
+  const f={};FIELDS.forEach(k=>f[k]=p[k]||"");
+  S.edit={id,f,kind:p.kind||(p.aiStatus==="pending"?"":"product"),keywords:[...p.keywords],purchased:p.purchased,dirty:false};
+  renderDetail();
+}
+function readEdit(){const ed=S.edit;if(!ed)return;FIELDS.forEach(k=>{const el=$("#e_"+k);if(el)ed.f[k]=el.value})}
+function renderDetail(){
+  const ed=S.edit;const p=ed&&S.products.find(x=>x.id===ed.id);if(!p)return;
+  const stale=p.aiStatus==="pending"&&Date.now()-p.updatedAt>120000;
+  const ai=p.aiStatus==="pending"&&!stale?`<div class="ai"><div class="tag">AI 분석 중</div><p>결과가 나오면 빈 칸이 자동으로 채워집니다.</p></div>`
+    :(p.aiStatus==="failed"||stale||(!p.ai&&!p.summary))?`<div class="ai"><div class="tag">${p.aiStatus==="failed"?"AI 분석 실패":stale?"AI 분석이 늦어지고 있습니다":"AI 분석 없음"}</div><p>다시 분석하면 비어 있는 칸만 채웁니다.</p><button class="chip" id="detAI" style="margin-top:8px">AI 다시 분석</button></div>`:"";
+  const title=ed.kind==="idea"?(ed.f.summary||"박람회·참고"):(ed.f.name||"제품");
+  openSheet(`<h3>${esc(title)}</h3>
     <div class="gal" id="detGal"></div>
     <div class="meta"><span>등록 ${esc(who(p))}</span><span>${dayKey(p.createdAt)} ${fmtTime(p.createdAt)}</span><span id="detCount">사진 ${p.photos.length}장</span>${p.ai?"<span>AI 자동 입력</span>":""}</div>
-    ${fieldsHTML(p,"e_")}
-    <div class="acts"><button class="btn danger" id="detDel">삭제</button><button class="btn pri" id="detSave" disabled>변경 저장</button></div>
+    ${kindHTML(ed.kind,"e")}
+    ${ai}
+    ${formHTML(ed.f,"e_",ed.kind,ed.keywords,ed.purchased)}
+    <div class="acts"><button class="btn danger" id="detDel">삭제</button><button class="btn pri" id="detSave" ${ed.dirty?"":"disabled"}>변경 저장</button></div>
     <div class="acts" style="margin-top:10px"><button class="btn ghost" id="detClose">닫기</button></div>`);
   refreshDetailGallery();
 }
 async function refreshDetailGallery(){
   const p=S.products.find(x=>x.id===S.openId);const g=$("#detGal");if(!p||!g)return;
-  g.innerHTML=p.photos.map((ph,i)=>`<img class="ph1" data-ph="${i}" alt="제품 사진 ${i+1}"${i===0&&p.thumb?` src="${esc(p.thumb)}"`:""}>`).join("")+`<button class="add" id="detAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>추가 촬영</button>`;
+  g.innerHTML=p.photos.map((ph,i)=>`<img class="ph1" data-ph="${i}" alt="사진 ${i+1}"${i===0&&p.thumb?` src="${esc(p.thumb)}"`:""}>`).join("")+`<button class="add" id="detAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>추가 촬영</button>`;
   const c=$("#detCount");if(c)c.textContent="사진 "+p.photos.length+"장";
   p.photos.forEach(async(ph,i)=>{const src=await photoSrc(ph);const el=g.querySelector(`[data-ph="${i}"]`);if(el&&src)el.src=src});
 }
-document.addEventListener("input",e=>{if(S.openId&&e.target.id&&e.target.id.startsWith("e_")){const b=$("#detSave");if(b){b.disabled=false;b.textContent="변경 저장"}}});
-document.addEventListener("change",e=>{if(S.openId&&e.target.id==="e_category"){const b=$("#detSave");if(b){b.disabled=false;b.textContent="변경 저장"}}});
+function markDirty(){if(S.edit)S.edit.dirty=true;const b=$("#detSave");if(b){b.disabled=false;b.textContent="변경 저장"}}
+document.addEventListener("input",e=>{if(S.openId&&e.target.id&&e.target.id.startsWith("e_"))markDirty()});
+document.addEventListener("change",e=>{if(S.openId&&e.target.id==="e_category")markDirty()});
+async function reanalyze(id){
+  const p=S.products.find(x=>x.id===id);if(!p||!p.photos.length){toast("사진이 없어 분석할 수 없습니다.");return}
+  try{
+    await patchProduct(id,{ai_status:"pending"});
+    if(S.openId===id&&S.edit&&!S.edit.dirty)openDetail(id);
+    toast("AI가 다시 분석합니다. 결과는 자동으로 채워집니다.");
+    const src=await photoSrc(p.photos[0]);const blob=await (await fetch(src)).blob();
+    const img=await loadImg(blob);
+    const r=await analyze(draw(img,1024).toDataURL("image/jpeg",.8),id);
+    await applyToSaved(id,r);
+    if(r.error)toast(r.error);
+  }catch(e){console.error(e);toast("다시 분석하지 못했습니다. 네트워크를 확인해 주세요.");try{await patchProduct(id,{ai_status:"failed"})}catch(_){}}
+}
 document.addEventListener("click",async e=>{
   const img=e.target.closest(".gal img.ph1");if(img&&img.src){$("#viewerImg").src=img.src;$("#viewer").classList.add("show");return}
   const t=e.target.closest("button");if(!t||!S.openId)return;
   const id=S.openId;
   if(t.id==="detClose")closeSheet();
   else if(t.id==="detAdd"){S.pickMode={kind:"product",id};pickSource()}
+  else if(t.id==="detAI")reanalyze(id);
   else if(t.id==="detSave"){
-    const upd={};FIELDS.forEach(k=>upd[k]=$("#e_"+k).value.trim());
+    readEdit();const ed=S.edit;
+    const upd={};FIELDS.forEach(k=>upd[k]=String(ed.f[k]||"").trim());
+    const kind=ed.kind||"product";
+    Object.assign(upd,{kind,keywords:kind==="idea"?ed.keywords:[],purchased:kind!=="idea"&&ed.purchased});
     t.disabled=true;t.textContent="저장 중…";
-    try{await patchProduct(id,toRow(upd));t.textContent="저장됨";toast("저장했습니다.")}
+    try{await patchProduct(id,toRow(upd));ed.dirty=false;t.textContent="저장됨";toast("저장했습니다.")}
     catch(err){t.disabled=false;t.textContent="변경 저장";toast(saveErr(err))}
   }
   else if(t.id==="detDel"){
     if(t.dataset.confirm!=="1"){t.dataset.confirm="1";t.textContent="한 번 더 누르면 삭제";setTimeout(()=>{if(t.isConnected){t.dataset.confirm="";t.textContent="삭제"}},3000);return}
-    if(await deleteProduct(id)){S.openId=null;$("#ov").classList.remove("show")}
+    if(await deleteProduct(id)){S.openId=null;S.edit=null;$("#ov").classList.remove("show")}
   }
 });
 async function deleteProduct(id){
   try{
     const p=S.products.find(x=>x.id===id);
     const {error}=await sb.from("hk_products").delete().eq("id",id);if(error)throw error;
-    S.products=S.products.filter(x=>x.id!==id);render();
+    S.products=S.products.filter(x=>x.id!==id);delete S.raw[id];render();
     const paths=((p&&p.photos)||[]).map(ph=>ph.path).filter(Boolean);
     if(paths.length)sb.storage.from(BUCKET).remove(paths).catch(()=>{});
     toast("삭제했습니다.");return true;
@@ -681,18 +816,23 @@ document.addEventListener("click",async e=>{
 
 /* ---------- export ---------- */
 function openExport(){
-  S.openId=null;S.draft=null;
+  S.openId=null;S.draft=null;S.edit=null;
   const n=filtered().length,all=S.products.length;S.expScope="all";
   openSheet(`<h3>엑셀로 내보내기</h3>
-    <p style="font-size:13px;color:var(--muted);margin:0">제품 사진(썸네일), 이름, 브랜드, 국적, 제조국, 제조사, 구매 이유, 구매처, 설명, 메모, 등록자가 한 줄씩 들어갑니다.</p>
+    <p style="font-size:13px;color:var(--muted);margin:0">엑셀 파일은 "제품"과 "박람회·참고" 시트로 나뉘고, 사진 썸네일이 함께 들어갑니다. 표 복사는 한 표에 "구분" 칸으로 나눠 붙습니다.</p>
     <div class="chips" style="margin-top:14px"><button class="chip on" data-scope="all">전체 ${all}개</button>${n!==all?`<button class="chip" data-scope="view">현재 보기 ${n}개</button>`:""}</div>
     <div class="acts"><button class="btn pri" id="doXlsx" ${all?"":"disabled"}>엑셀 파일 저장 (.xlsx)</button></div>
     <div class="acts" style="margin-top:10px"><button class="btn sec" id="doCopy" ${all?"":"disabled"}>표 복사 (엑셀·구글시트에 붙여넣기)</button></div>
     <div class="acts" style="margin-top:10px"><button class="btn ghost" id="expClose">닫기</button></div>`);
 }
 function expRows(){return S.expScope==="view"?filtered():[...S.products].sort((a,b)=>a.createdAt-b.createdAt)}
-const HEAD=["No","등록일","제품명","브랜드","브랜드 국적","제조국","제조사","카테고리","구매 이유","구매처","제품 설명","메모","사진 수","등록자"];
-const rowVals=(p,i)=>[i+1,dayKey(p.createdAt),p.name,p.brand,p.country,p.madeIn,p.maker,p.category,p.reason,p.store,p.summary,p.memo,p.photos.length,who(p)];
+// one table for copy/paste; the xlsx splits it into a product sheet and a trade-show sheet
+const HEAD=["No","등록일","구분","제품명","브랜드·업체","브랜드 국적","제조국","제조사","카테고리","키워드","구매","구매 이유","구매처·장소","설명·한 줄 정리","메모","사진 수","등록자"];
+const rowVals=(p,i)=>[i+1,dayKey(p.createdAt),isIdea(p)?"박람회·참고":"제품",p.name,p.brand,p.country,p.madeIn,p.maker,p.category,p.keywords.join(", "),isIdea(p)?"":p.purchased?"구매":"미구매",p.reason,p.store,p.summary,p.memo,p.photos.length,who(p)];
+const SHEETS=[
+  {name:"제품",pick:p=>!isIdea(p),cols:[["등록일",11,p=>dayKey(p.createdAt)],["제품명",28,p=>p.name],["브랜드",16,p=>p.brand],["브랜드 국적",10,p=>p.country],["제조국",9,p=>p.madeIn],["제조사",16,p=>p.maker],["카테고리",10,p=>p.category],["구매",7,p=>p.purchased?"구매":"미구매"],["구매 이유",26,p=>p.reason],["구매처",16,p=>p.store],["제품 설명",44,p=>p.summary],["메모",28,p=>p.memo],["사진 수",7,p=>p.photos.length],["등록자",9,p=>who(p)]]},
+  {name:"박람회·참고",pick:isIdea,cols:[["등록일",11,p=>dayKey(p.createdAt)],["한 줄 정리",44,p=>p.summary],["키워드",16,p=>p.keywords.join(", ")],["브랜드·업체",20,p=>p.brand],["제품명",24,p=>p.name],["카테고리",10,p=>p.category],["장소·부스",18,p=>p.store],["메모",30,p=>p.memo],["사진 수",7,p=>p.photos.length],["등록자",9,p=>who(p)]]}
+];
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button");if(!t)return;
   if(t.dataset.scope){S.expScope=t.dataset.scope;document.querySelectorAll("[data-scope]").forEach(b=>b.classList.toggle("on",b===t));return}
@@ -714,23 +854,25 @@ function loadExcelJS(){
 }
 async function buildXlsx(){
   await loadExcelJS();
-  const rows=expRows();
+  const all=expRows();
   const wb=new ExcelJS.Workbook();wb.creator="HK 뷰티 리서치";
-  const ws=wb.addWorksheet("제품 리스트",{views:[{state:"frozen",ySplit:1}]});
-  const widths=[5,13,11,28,16,10,9,16,10,30,18,44,30,7,9];
-  ws.columns=["No","사진"].concat(HEAD.slice(1)).map((h,i)=>({header:h,width:widths[i]}));
-  const hr=ws.getRow(1);hr.height=24;
-  hr.eachCell(c=>{c.font={bold:true,color:{argb:"FFFFFFFF"}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFEA4C89"}};c.alignment={vertical:"middle",horizontal:"center"}});
-  rows.forEach((p,i)=>{
-    const v=rowVals(p,i);const r=ws.addRow([v[0],""].concat(v.slice(1)));
-    r.height=72;r.alignment={vertical:"middle",wrapText:true};
-    if(i%2)r.eachCell({includeEmpty:true},c=>c.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFBEAF3"}});
-    if(p.thumb&&p.thumb.startsWith("data:image/jpeg")){
-      const imgId=wb.addImage({base64:p.thumb,extension:"jpeg"});
-      ws.addImage(imgId,{tl:{col:1.1,row:r.number-1+0.08},ext:{width:84,height:84},editAs:"oneCell"});
-    }
+  SHEETS.forEach(sh=>{
+    const rows=all.filter(sh.pick);
+    const ws=wb.addWorksheet(sh.name,{views:[{state:"frozen",ySplit:1}]});
+    ws.columns=[{header:"No",width:5},{header:"사진",width:13}].concat(sh.cols.map(([h,w])=>({header:h,width:w})));
+    const hr=ws.getRow(1);hr.height=24;
+    hr.eachCell(c=>{c.font={bold:true,color:{argb:"FFFFFFFF"}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:sh.name==="제품"?"FFEA4C89":"FF8B6FD6"}};c.alignment={vertical:"middle",horizontal:"center"}});
+    rows.forEach((p,i)=>{
+      const r=ws.addRow([i+1,""].concat(sh.cols.map(c=>c[2](p))));
+      r.height=72;r.alignment={vertical:"middle",wrapText:true};
+      if(i%2)r.eachCell({includeEmpty:true},c=>c.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFBEAF3"}});
+      if(p.thumb&&p.thumb.startsWith("data:image/jpeg")){
+        const imgId=wb.addImage({base64:p.thumb,extension:"jpeg"});
+        ws.addImage(imgId,{tl:{col:1.1,row:r.number-1+0.08},ext:{width:84,height:84},editAs:"oneCell"});
+      }
+    });
+    ws.autoFilter={from:{row:1,column:1},to:{row:1,column:sh.cols.length+2}};
   });
-  ws.autoFilter={from:"A1",to:"O1"};
   const buf=await wb.xlsx.writeBuffer();
   const name=`HK_뷰티_시장조사_${dayKey(Date.now())}.xlsx`;
   const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
