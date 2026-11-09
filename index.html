@@ -368,7 +368,7 @@ function draw(img,max,square){
 const toBlob=(c,q)=>new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",q));
 async function prep(file){
   const img=await loadImg(file);
-  return{full:await toBlob(draw(img,1600),.82),ai:draw(img,1024).toDataURL("image/jpeg",.8),thumb:draw(img,200,true).toDataURL("image/jpeg",.72),preview:draw(img,400).toDataURL("image/jpeg",.75)};
+  return{full:await toBlob(draw(img,1600),.82),ai:draw(img,896).toDataURL("image/jpeg",.75),thumb:draw(img,200,true).toDataURL("image/jpeg",.72),preview:draw(img,400).toDataURL("image/jpeg",.75)};
 }
 async function storePhoto(p){
   const path=`${dayKey(Date.now())}/${newId()}.jpg`;
