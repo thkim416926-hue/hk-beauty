@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HK 시장조사</title>
+<meta name="apple-mobile-web-app-title" content="HK 시장조사">
+<meta name="application-name" content="HK 시장조사">
+<meta name="theme-color" content="#f8f1f5">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
+<link rel="manifest" href="manifest.json">
+<script>
+// Opened from the home-screen icon: go straight to the Claude version.
+// Opened from a shared link: show the install steps (and make the saved address the "open" one).
+(function(){
+  var APP="https://claude.ai/artifact/4uxnuXm4qefRPsJAe6VeN3";
+  var standalone=window.navigator.standalone===true||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);
+  if(/[?&]open=1/.test(location.search)||standalone){document.documentElement.className="go";location.replace(APP);return}
+  try{history.replaceState(null,"","?open=1")}catch(e){}
+})();
+</script>
+<style>
+:root{--bg:#f8f1f5;--ink:#2a2230;--muted:#9b8fa3;--line:#efe4ec;--pink:#ea4c89;--soft:#fbeaf3;--grad:linear-gradient(115deg,#f2508c 0%,#f98a87 45%,#d68ae9 100%)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,-apple-system,sans-serif;line-height:1.55}
+main{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 32px)}
+.hd{display:flex;align-items:center;gap:14px}
+.hd img{width:72px;height:72px;border-radius:18px;box-shadow:0 8px 20px -10px rgba(234,76,137,.6)}
+.hd h1{margin:0;font-size:24px;font-weight:600}.hd p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.card{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px 18px}
+.card h2{margin:0 0 10px;font-size:16px}
+ol{margin:0;padding-left:20px;display:grid;gap:8px;font-size:15px}
+li::marker{color:var(--pink);font-weight:600}
+.tip{margin-top:10px;font-size:13px;background:var(--soft);border-radius:12px;padding:8px 10px}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:999px;background:var(--grad);color:#fff;font-weight:600;font-size:16px;text-decoration:none;margin-top:20px}
+.small{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+.wait{display:none;text-align:center;padding-top:40vh;color:var(--muted)}
+.go main{display:none}.go .wait{display:block}
+</style>
+</head>
+<body>
+<div class="wait">HK 시장조사를 여는 중… <a href="https://claude.ai/artifact/4uxnuXm4qefRPsJAe6VeN3">열리지 않으면 누르기</a></div>
+<main>
+  <div class="hd"><img src="../icon-180.png" alt=""><div><h1>HK 시장조사</h1><p>홈 화면에 추가하면 이 아이콘으로 바로 열립니다.</p></div></div>
+
+  <div class="card">
+    <h2>아이폰 (Safari)</h2>
+    <ol>
+      <li>이 페이지를 <b>Safari</b>에서 엽니다.</li>
+      <li>아래쪽 <b>공유 버튼</b>(네모에 위 화살표)을 누릅니다.</li>
+      <li><b>홈 화면에 추가</b>를 누릅니다.</li>
+      <li><b>‘웹 앱으로 열기’를 끄고</b> 오른쪽 위 <b>추가</b>를 누릅니다.</li>
+    </ol>
+    <div class="tip">‘웹 앱으로 열기’를 끄면 Safari에서 열려 claude.ai 로그인이 그대로 유지됩니다.</div>
+  </div>
+
+  <div class="card">
+    <h2>안드로이드 (Chrome)</h2>
+    <ol>
+      <li>이 페이지를 <b>Chrome</b>에서 엽니다.</li>
+      <li>오른쪽 위 <b>⋮</b> 메뉴를 누릅니다.</li>
+      <li><b>홈 화면에 추가</b> → <b>추가</b>를 누릅니다.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>처음 열 때</h2>
+    <ol>
+      <li>claude.ai 로그인이 나오면 한 번만 로그인합니다.</li>
+      <li>이름을 고르고(미진·수연·은조·규리), AI 사용 허용 창이 뜨면 <b>허용</b>을 누릅니다.</li>
+    </ol>
+  </div>
+
+  <a class="btn" href="https://claude.ai/artifact/4uxnuXm4qefRPsJAe6VeN3">지금 바로 열기</a>
+  <p class="small">이전 버전(z.ai)은 <a href="../">여기</a>에 그대로 있습니다.</p>
+</main>
+</body>
+</html>
